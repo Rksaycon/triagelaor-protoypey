@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriageLaor — Submit Report</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:monospace; background:#0d1117; color:#e6edf3; min-height:100vh; padding:20px; }
+h1 { color:#58a6ff; font-size:18px; margin-bottom:2px; }
+.sub { color:#8b949e; font-size:11px; margin-bottom:16px; }
+.nav { display:flex; gap:10px; margin-bottom:18px; }
+.nav a { color:#8b949e; font-size:11px; text-decoration:none; padding:4px 12px; border:1px solid #30363d; border-radius:3px; }
+.nav a:hover,.nav a.active { color:#58a6ff; border-color:#58a6ff; }
+.card { background:#161b22; border:1px solid #30363d; border-radius:6px; padding:18px; margin-bottom:14px; }
+label { display:block; font-size:10px; color:#8b949e; letter-spacing:1.5px; margin-bottom:5px; }
+textarea,input[type=text] { width:100%; background:#0d1117; border:1px solid #30363d; border-radius:4px; color:#e6edf3; font-family:monospace; font-size:13px; padding:10px; outline:none; }
+textarea { resize:vertical; }
+textarea:focus,input[type=text]:focus { border-color:#58a6ff; }
+select { background:#0d1117; border:1px solid #30363d; border-radius:4px; color:#e6edf3; font-family:monospace; font-size:12px; padding:7px 10px; outline:none; }
+button { background:#1f6feb; color:#fff; border:none; border-radius:4px; padding:10px 20px; font-family:monospace; font-size:12px; font-weight:bold; cursor:pointer; letter-spacing:1px; }
+button:hover { background:#388bfd; }
+button:disabled { background:#21262d; color:#8b949e; cursor:not-allowed; }
+.btn-gps { background:#0d1117; border:1px solid #30363d; color:#8b949e; border-radius:4px; padding:9px 16px; font-family:monospace; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:8px; }
+.btn-gps:hover { border-color:#58a6ff; color:#58a6ff; }
+.btn-clear { background:transparent; border:1px solid #f8514930; color:#f85149; font-family:monospace; font-size:10px; padding:4px 10px; border-radius:3px; cursor:pointer; }
+.row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-top:12px; }
+.section-title { font-size:10px; color:#8b949e; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #21262d; padding-bottom:5px; }
+.badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:10px; font-weight:bold; letter-spacing:1px; border:1px solid; }
+.badge-fire    { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-flood   { color:#58a6ff; border-color:#58a6ff40; background:#58a6ff10; }
+.badge-medical { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-infra   { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-high    { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-medium  { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-low     { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-credible   { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-suspicious { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-panic   { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-urgent  { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-normal,.badge-casual,.badge-deliberate,.badge-unknown { color:#8b949e; border-color:#8b949e40; background:#8b949e10; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:10px; }
+.stat { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:12px; text-align:center; }
+.stat-val { font-size:22px; font-weight:bold; margin:4px 0; }
+.stat-lbl { font-size:9px; color:#8b949e; letter-spacing:1px; }
+.pbar { height:7px; background:#21262d; border-radius:4px; margin-top:6px; overflow:hidden; }
+.pfill { height:100%; border-radius:4px; transition:width .4s; }
+.alert { border-radius:4px; padding:10px 12px; font-size:11px; margin-top:8px; display:none; }
+.alert-suspicious { background:#f8514910; border:1px solid #f8514940; color:#f85149; }
+.alert-mismatch   { background:#d2992215; border:1px solid #d2992240; color:#d29922; }
+.alert-normalize  { background:#58a6ff10; border:1px solid #58a6ff30; color:#58a6ff; }
+.alert-escalation { background:#e3a00810; border:1px solid #e3a00840; color:#e3a008; }
+.alert-typing     { background:#3fb95010; border:1px solid #3fb95030; color:#3fb950; }
+.alert-success    { background:#3fb95015; border:1px solid #3fb95040; color:#3fb950; }
+.alert-eta { background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:16px; margin-top:8px; display:none; }
+.eta-header { font-size:13px; font-weight:bold; color:#e6edf3; margin-bottom:12px; letter-spacing:1px; }
+.eta-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+.eta-item { background:#161b22; border:1px solid #30363d; border-radius:4px; padding:10px; }
+.eta-item-lbl { font-size:9px; color:#8b949e; letter-spacing:1.5px; margin-bottom:4px; }
+.eta-item-val { font-size:13px; font-weight:bold; }
+.eta-big { background:#161b22; border:1px solid #58a6ff40; border-radius:4px; padding:14px; text-align:center; margin-bottom:10px; }
+.eta-big-lbl { font-size:9px; color:#8b949e; letter-spacing:2px; margin-bottom:6px; }
+.eta-big-val { font-size:28px; font-weight:bold; color:#58a6ff; }
+.eta-msg { font-size:11px; color:#8b949e; line-height:1.6; padding:10px 12px; background:#161b22; border-radius:4px; border-left:3px solid #30363d; }
+.eta-queue { font-size:10px; color:#d29922; margin-top:8px; }
+.results { display:none; }
+.results.show { display:block; }
+.demo-btns { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.dbtn { background:#21262d; border:1px solid #30363d; color:#8b949e; border-radius:3px; padding:3px 8px; font-family:monospace; font-size:10px; cursor:pointer; }
+.dbtn:hover { border-color:#58a6ff; color:#58a6ff; }
+#typing-live { font-size:10px; color:#8b949e; margin-top:5px; min-height:14px; }
+.tl-panic { color:#f85149; } .tl-urgent { color:#d29922; } .tl-normal { color:#3fb950; }
+.brow { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:10px; }
+.blbl { width:125px; color:#8b949e; } .bbg { flex:1; background:#21262d; border-radius:2px; height:5px; }
+.bfg { height:5px; border-radius:2px; } .bpct { width:32px; text-align:right; color:#8b949e; }
+.gps-pinned { background:#3fb95010; border:1px solid #3fb95040; border-radius:4px; padding:10px 12px; font-size:11px; color:#3fb950; display:flex; align-items:center; justify-content:space-between; }
+.map-preview { width:100%; height:220px; border:1px solid #30363d; border-radius:4px; margin-top:8px; display:none; }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<h1>⚡ TRIAGELAOR — ML PROTOTYPE</h1>
+<p class="sub">BDRRMC · BARANGAY DEL ROSARIO · MILAOR</p>
+<div class="nav">
+  <a href="/" class="active">📋 Submit Report</a>
+  <a href="/dashboard">🖥 Official Dashboard</a>
+</div>
+
+<div class="card">
+  <div class="section-title">CITIZEN INCIDENT REPORT</div>
+  <label>DESCRIPTION</label>
+  <textarea id="desc" rows="4" placeholder="Describe the incident... try panic typing like SUUUNOOOOGGG!!! or a prank like haha sunog daw char"></textarea>
+  <div id="typing-live">⌨ Start typing to see real-time behavior analysis...</div>
+  <div class="demo-btns">
+    <span style="font-size:9px;color:#8b949e;align-self:center">DEMO:</span>
+    <button class="dbtn" onclick="demo('SUUUNOOOOGGG!!!')">SUUUNOOOOGGG!!!</button>
+    <button class="dbtn" onclick="demo('BAHA BAHA TULONGGG!!!')">BAHA TULONGGG!!!</button>
+    <button class="dbtn" onclick="demo('haha sunog daw char joke')">prank</button>
+    <button class="dbtn" onclick="demo('asdfghjkl 123')">gibberish</button>
+    <button class="dbtn" onclick="demo('Baha na mataas sa Purok 3 hindi na makalabas ang mga tao')">real flood</button>
+    <button class="dbtn" onclick="demo('May naaksidente sa kalsada may sugatan walang malay')">real medical</button>
+    <button class="dbtn" onclick="demo('Nasusunog ang tatlong bahay sa Purok 2')">real fire</button>
+    <button class="dbtn" onclick="demo('Bumagsak ang malaking puno sa kalsada')">real infra</button>
+  </div>
+
+  <div style="margin-top:16px">
+    <label>LOCATION</label>
+    <div id="gps-idle">
+      <button class="btn-gps" id="gps-btn" onclick="getGPS()">
+        <span id="gps-icon">📍</span>
+        <span id="gps-label">PIN MY GPS LOCATION</span>
+      </button>
+    </div>
+    <div id="gps-pinned-box" class="gps-pinned" style="display:none">
+      <span>📍 GPS PINNED &nbsp;|&nbsp; <span id="gps-coords"></span></span>
+      <button class="btn-clear" onclick="clearGPS()">✕ CLEAR</button>
+    </div>
+    <div id="map-preview" class="map-preview"></div>
+    <div style="margin-top:10px">
+      <label>LOCATION DESCRIPTION <span style="color:#3d5070">(purok, street, landmark)</span></label>
+      <input type="text" id="loc-text" placeholder="e.g. Purok 3, near the barangay hall...">
+    </div>
+    <div style="font-size:9px;color:#3d5070;margin-top:4px">PIN GPS AND/OR TYPE THE LOCATION</div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>USER-SELECTED SEVERITY (optional)</label>
+      <select id="user_sev">
+        <option value="">-- not selected --</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+    </div>
+    <button id="btn" onclick="analyze()">▶ ANALYZE & SUBMIT</button>
+    <span id="loading" style="display:none;color:#8b949e;font-size:11px">⏳ analyzing...</span>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="results card" id="results">
+  <div class="alert alert-success"    id="a-success"></div>
+  <div class="alert alert-normalize"  id="a-norm"></div>
+  <div class="alert alert-typing"     id="a-typing"></div>
+  <div class="alert alert-suspicious" id="a-susp"></div>
+  <div class="alert alert-escalation" id="a-esc"></div>
+  <div class="alert alert-mismatch"   id="a-mismatch"></div>
+
+  <!-- Status polling card — credible reports only -->
+  <div class="alert-eta" id="a-eta">
+    <div class="eta-header" id="eta-header">📋 REPORT SUBMITTED</div>
+    <div class="eta-grid">
+      <div class="eta-item">
+        <div class="eta-item-lbl">REPORT ID</div>
+        <div class="eta-item-val" id="eta-id" style="color:#58a6ff"></div>
+      </div>
+      <div class="eta-item">
+        <div class="eta-item-lbl">PRIORITY</div>
+        <div class="eta-item-val" id="eta-prio"></div>
+      </div>
+      <div class="eta-item">
+        <div class="eta-item-lbl">CATEGORY</div>
+        <div class="eta-item-val" id="eta-cat" style="font-size:11px"></div>
+      </div>
+      <div class="eta-item">
+        <div class="eta-item-lbl">SEVERITY</div>
+        <div class="eta-item-val" id="eta-sev"></div>
+      </div>
+    </div>
+
+    <!-- PENDING -->
+    <div id="eta-pending" style="text-align:center;padding:16px;background:#161b22;border-radius:4px;margin-bottom:10px">
+      <div style="font-size:11px;color:#8b949e;margin-bottom:8px;letter-spacing:1px">STATUS</div>
+      <div style="font-size:18px;font-weight:bold;color:#d29922;margin-bottom:8px">⏳ AWAITING OFFICIAL REVIEW</div>
+      <div style="font-size:10px;color:#8b949e">Your report has been forwarded to BDRRMC officials.<br>This page will update automatically when they respond.</div>
+      <div id="eta-pulse" style="margin-top:10px;font-size:9px;color:#3d5070">● checking for updates...</div>
+      <div style="margin-top:10px">
+        <a id="track-link" href="#" target="_blank"
+           style="color:#58a6ff;font-size:11px;font-weight:bold;letter-spacing:1px;text-decoration:none">
+          📍 OPEN TRACKING PAGE →
+        </a>
+        <div style="font-size:9px;color:#8b949e;margin-top:3px">Bookmark this link to check your report status anytime</div>
+      </div>
+    </div>
+
+    <!-- ONGOING — shown when official sets Ongoing -->
+    <div id="eta-ongoing" style="display:none">
+      <div class="eta-big">
+        <div class="eta-big-lbl">⚡ OFFICIAL HAS RESPONDED — ESTIMATED RESPONSE TIME</div>
+        <div class="eta-big-val" id="eta-time"></div>
+      </div>
+      <div class="eta-msg" id="eta-msg"></div>
+      <div class="eta-queue" id="eta-queue" style="display:none"></div>
+    </div>
+
+    <!-- RESOLVED -->
+    <div id="eta-resolved" style="display:none;text-align:center;padding:16px;background:#3fb95010;border:1px solid #3fb95040;border-radius:4px">
+      <div style="font-size:20px;margin-bottom:6px">✅</div>
+      <div style="font-size:14px;font-weight:bold;color:#3fb950;letter-spacing:1px">INCIDENT RESOLVED</div>
+      <div style="font-size:10px;color:#8b949e;margin-top:6px">Your report has been resolved by barangay officials. Thank you.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="stat"><div class="stat-lbl">CATEGORY</div><div class="stat-val" id="r-cat" style="font-size:12px;margin-top:6px"></div></div>
+    <div class="stat"><div class="stat-lbl">SEVERITY</div><div class="stat-val" id="r-sev"></div></div>
+    <div class="stat"><div class="stat-lbl">CREDIBILITY</div><div class="stat-val" id="r-cred" style="font-size:12px;margin-top:6px"></div></div>
+    <div class="stat"><div class="stat-lbl">TYPING</div><div class="stat-val" id="r-typing" style="font-size:12px;margin-top:6px"></div></div>
+    <div class="stat"><div class="stat-lbl">PRIORITY</div><div class="stat-val" id="r-prio"></div><div class="pbar"><div class="pfill" id="r-pbar"></div></div></div>
+  </div>
+  <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div><div class="section-title">CATEGORY SCORES</div><div id="cat-bars"></div></div>
+    <div><div class="section-title">SEVERITY SCORES</div><div id="sev-bars"></div></div>
+  </div>
+</div>
+
+<script>
+// ── GPS ───────────────────────────────────────────────────────────────────────
+let pinnedLat = null, pinnedLng = null;
+let miniMap = null, miniMarker = null;
+
+function getGPS() {
+  const btn = document.getElementById('gps-btn');
+  const lbl = document.getElementById('gps-label');
+  lbl.textContent = 'ACQUIRING GPS...';
+  btn.disabled = true;
+  if (!navigator.geolocation) {
+    alert('Geolocation not supported by this browser.');
+    lbl.textContent = 'PIN MY GPS LOCATION';
+    btn.disabled = false;
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      pinnedLat = pos.coords.latitude;
+      pinnedLng = pos.coords.longitude;
+      document.getElementById('gps-idle').style.display = 'none';
+      document.getElementById('gps-pinned-box').style.display = 'flex';
+      document.getElementById('gps-coords').textContent = `${pinnedLat.toFixed(6)}, ${pinnedLng.toFixed(6)}`;
+      showMiniMap(pinnedLat, pinnedLng);
+      btn.disabled = false;
+      lbl.textContent = 'PIN MY GPS LOCATION';
+    },
+    err => {
+      alert('Could not get location: ' + err.message + '\n\nTry typing the location manually below.');
+      lbl.textContent = 'PIN MY GPS LOCATION';
+      btn.disabled = false;
+    },
+    { timeout: 15000, enableHighAccuracy: true }
+  );
+}
+
+function clearGPS() {
+  pinnedLat = null; pinnedLng = null;
+  document.getElementById('gps-idle').style.display = 'block';
+  document.getElementById('gps-pinned-box').style.display = 'none';
+  document.getElementById('map-preview').style.display = 'none';
+  if (miniMap) { miniMap.remove(); miniMap = null; miniMarker = null; }
+}
+
+function showMiniMap(lat, lng) {
+  const mapEl = document.getElementById('map-preview');
+  mapEl.style.display = 'block';
+  if (miniMap) { miniMap.remove(); miniMap = null; }
+  miniMap = L.map('map-preview', { zoomControl:true, attributionControl:false }).setView([lat, lng], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+  miniMarker = L.circleMarker([lat, lng], {
+    radius:10, fillColor:'#f85149', color:'#fff', weight:2, fillOpacity:0.9
+  }).addTo(miniMap).bindPopup('Incident location').openPopup();
+}
+
+// ── Typing tracker ────────────────────────────────────────────────────────────
+const T = { first:null, last:null, chars:0, bs:0, pauses:0 };
+function resetT() { T.first=null; T.last=null; T.chars=0; T.bs=0; T.pauses=0; }
+
+document.getElementById('desc').addEventListener('keydown', e => {
+  const now = Date.now();
+  if (!T.first) T.first = now;
+  if (T.last && now - T.last > 1200) T.pauses++;
+  if (e.key === 'Backspace') T.bs++;
+  else if (e.key.length === 1) T.chars++;
+  T.last = now;
+  updateLive();
+});
+
+function updateLive() {
+  const el = document.getElementById('typing-live');
+  if (!T.first || T.chars < 3) { el.textContent = '⌨ Start typing...'; el.className = ''; return; }
+  const cps = (T.chars / ((Date.now() - T.first) / 1000)).toFixed(1);
+  const br  = T.chars ? ((T.bs / T.chars) * 100).toFixed(0) : 0;
+  let prof, cls;
+  if (cps > 5)        { prof = '🔴 PANIC';  cls = 'tl-panic'; }
+  else if (cps > 3.5) { prof = '🟡 URGENT'; cls = 'tl-urgent'; }
+  else                { prof = '🟢 NORMAL'; cls = 'tl-normal'; }
+  el.textContent = `⌨ ${prof} — ${cps} chars/sec · ${T.bs} backspaces (${br}%) · ${T.pauses} pauses`;
+  el.className = cls;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const catClass  = v => ({'Fire':'fire','Flooding':'flood','Medical Emergency':'medical','Infrastructure Damage':'infra'}[v] || 'flood');
+const pc        = n => Math.round(n * 100);
+const prioColor = s => s >= 75 ? '#f85149' : s >= 50 ? '#d29922' : '#3fb950';
+const barColor  = p => p >= 70 ? '#3fb950' : p >= 40 ? '#d29922' : '#f85149';
+
+function makeBars(scores, el) {
+  el.innerHTML = '';
+  Object.entries(scores).sort((a, b) => b[1] - a[1]).forEach(([lbl, val]) => {
+    const p = pc(val);
+    el.innerHTML += `<div class="brow"><div class="blbl">${lbl}</div>
+      <div class="bbg"><div class="bfg" style="width:${p}%;background:${barColor(p)}"></div></div>
+      <div class="bpct">${p}%</div></div>`;
+  });
+}
+
+function showAlert(id, html) { const e = document.getElementById(id); e.innerHTML = html; e.style.display = 'block'; }
+function hideAlert(id) { document.getElementById(id).style.display = 'none'; }
+
+function demo(t) {
+  resetT();
+  document.getElementById('desc').value = t;
+  document.getElementById('typing-live').textContent = '⌨ Demo loaded.';
+  document.getElementById('typing-live').className = '';
+  document.getElementById('user_sev').value = '';
+}
+
+// ── Status polling ────────────────────────────────────────────────────────────
+let pollInterval = null;
+let pollDots = 0;
+
+function startPolling(reportId) {
+  if (pollInterval) clearInterval(pollInterval);
+  document.getElementById('eta-pending').style.display = 'block';
+  document.getElementById('eta-ongoing').style.display = 'none';
+  document.getElementById('eta-resolved').style.display = 'none';
+
+  // Set tracking link
+  document.getElementById('track-link').href = `/track/${reportId}`;
+
+  pollInterval = setInterval(async () => {
+    try {
+      pollDots = (pollDots + 1) % 4;
+      document.getElementById('eta-pulse').textContent = '● checking for updates' + '.'.repeat(pollDots);
+      const res = await fetch(`/reports/${reportId}/citizen`);
+      const s = await res.json();
+      if (s.status === 'Ongoing') {
+        clearInterval(pollInterval);
+        showOngoing(s);
+      } else if (s.status === 'Resolved') {
+        clearInterval(pollInterval);
+        showResolved();
+      }
+    } catch(e) {}
+  }, 4000);
+}
+
+function showOngoing(s) {
+  document.getElementById('eta-pending').style.display = 'none';
+  document.getElementById('eta-resolved').style.display = 'none';
+  document.getElementById('eta-ongoing').style.display = 'block';
+  document.getElementById('eta-header').textContent = '⚡ OFFICIAL HAS ACCEPTED YOUR REPORT';
+  const eta = s.eta;
+  const timeEl = document.getElementById('eta-time');
+  timeEl.textContent = eta.eta_label;
+  timeEl.style.color = s.severity === 'High' ? '#f85149' : s.severity === 'Medium' ? '#d29922' : '#58a6ff';
+  document.getElementById('eta-msg').textContent = eta.message;
+  const qEl = document.getElementById('eta-queue');
+  if (eta.queue_delay_added > 0) {
+    qEl.style.display = 'block';
+    qEl.textContent = `⚠ ${eta.pending_ahead} reports ahead — wait increased by +${eta.queue_delay_added} min.`;
+  } else {
+    qEl.style.display = 'none';
+  }
+}
+
+function showResolved() {
+  document.getElementById('eta-pending').style.display = 'none';
+  document.getElementById('eta-ongoing').style.display = 'none';
+  document.getElementById('eta-resolved').style.display = 'block';
+  document.getElementById('eta-header').textContent = '✅ YOUR REPORT HAS BEEN RESOLVED';
+}
+
+// ── Analyze & Submit ──────────────────────────────────────────────────────────
+async function analyze() {
+  const desc    = document.getElementById('desc').value.trim();
+  const locText = document.getElementById('loc-text').value.trim();
+  if (!desc && !locText && !pinnedLat) {
+    alert('Enter a description or pin a location first.'); return;
+  }
+  document.getElementById('btn').disabled = true;
+  document.getElementById('loading').style.display = 'inline';
+  document.getElementById('results').classList.remove('show');
+
+  const payload = {
+    description:   desc,
+    location_text: locText,
+    lat:           pinnedLat,
+    lng:           pinnedLng,
+    typing_data: {
+      total_time_ms:   T.first ? Date.now() - T.first : 0,
+      char_count:      T.chars,
+      backspace_count: T.bs,
+      word_count:      desc.split(' ').length,
+      pause_count:     T.pauses
+    }
+  };
+  const us = document.getElementById('user_sev').value;
+  if (us) payload.user_severity = us;
+
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+
+    // Success alert with tracking link
+    showAlert('a-success',
+      `✅ <b>RPT-${d.report_id}</b> submitted &nbsp;|&nbsp;
+       <a href="/track/${d.report_id}" target="_blank"
+          style="color:#58a6ff;font-weight:bold;text-decoration:none">
+         📍 TRACK YOUR REPORT →
+       </a>`);
+
+    // Status polling card — credible only
+    if (!d.is_suspicious) {
+      document.getElementById('a-eta').style.display = 'block';
+      document.getElementById('eta-id').textContent  = `RPT-${d.report_id}`;
+      document.getElementById('eta-cat').textContent = d.category;
+      const prioEl = document.getElementById('eta-prio');
+      prioEl.textContent = d.priority_score;
+      prioEl.style.color = prioColor(d.priority_score);
+      const sevEl = document.getElementById('eta-sev');
+      sevEl.textContent = d.severity;
+      sevEl.style.color = d.severity === 'High' ? '#f85149' : d.severity === 'Medium' ? '#d29922' : '#3fb950';
+      startPolling(d.report_id);
+    } else {
+      document.getElementById('a-eta').style.display = 'none';
+    }
+
+    // Panic normalize
+    if (d.was_normalized) showAlert('a-norm',
+      `⚡ <b>PANIC TEXT NORMALIZED</b><br>Original: ${d.original_input}<br>Cleaned: ${d.normalized_input}`);
+    else hideAlert('a-norm');
+
+    // Typing
+    const t = d.typing;
+    if (t && t.profile !== 'unknown') showAlert('a-typing',
+      `⌨ <b>TYPING: ${t.profile.toUpperCase()}</b> — ${t.cps} chars/sec · backspace ratio ${pc(t.backspace_ratio)}% · ${t.pauses} pauses`);
+    else hideAlert('a-typing');
+
+    // Suspicious
+    if (d.is_suspicious) showAlert('a-susp',
+      `⚠ <b>YOUR REPORT HAS BEEN FLAGGED</b><br>
+       Our system detected this may be a prank, irrelevant, or unclear report.<br>
+       <b>No ETA will be given.</b> If this is a real emergency, please re-submit with a clearer description.<br>
+       Credibility score: ${pc(d.credibility_score)}%`);
+    else hideAlert('a-susp');
+
+    // Escalation
+    const esc = d.escalation;
+    if (esc && esc.escalated) showAlert('a-esc', `🚨 <b>${esc.message}</b>`);
+    else hideAlert('a-esc');
+
+    // Mismatch
+    if (d.mismatch && d.mismatch.mismatch) showAlert('a-mismatch',
+      `⚠ <b>SEVERITY MISMATCH</b> — ${d.mismatch.message}`);
+    else hideAlert('a-mismatch');
+
+    // Stats
+    document.getElementById('r-cat').innerHTML    = `<span class="badge badge-${catClass(d.category)}">${d.category}</span>`;
+    document.getElementById('r-sev').innerHTML    = `<span class="badge badge-${d.severity.toLowerCase()}">${d.severity}</span>`;
+    document.getElementById('r-cred').innerHTML   = `<span class="badge badge-${d.credibility}">${d.credibility.toUpperCase()}</span>`;
+    document.getElementById('r-typing').innerHTML = `<span class="badge badge-${t.profile}">${t.profile.toUpperCase()}</span>`;
+
+    const p = d.priority_score;
+    document.getElementById('r-prio').textContent  = p;
+    document.getElementById('r-prio').style.color  = prioColor(p);
+    document.getElementById('r-pbar').style.width  = p + '%';
+    document.getElementById('r-pbar').style.background = prioColor(p);
+
+    makeBars(d.category_scores, document.getElementById('cat-bars'));
+    makeBars(d.severity_scores, document.getElementById('sev-bars'));
+
+    document.getElementById('results').classList.add('show');
+    resetT();
+
+  } catch(e) {
+    alert('Server error — is app.py running?\n\npython app.py');
+  } finally {
+    document.getElementById('btn').disabled = false;
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>

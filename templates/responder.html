@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Responder SMS</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#1a1a1a; min-height:100vh; display:flex; flex-direction:column; align-items:center; }
+
+/* Phone frame */
+.phone { width:360px; min-height:100vh; background:#000; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+
+/* Status bar */
+.status-bar { background:#000; padding:12px 20px 4px; display:flex; justify-content:space-between; align-items:center; }
+.status-time { color:#fff; font-size:15px; font-weight:600; }
+.status-icons { color:#fff; font-size:12px; display:flex; gap:6px; align-items:center; }
+.signal { display:flex; gap:2px; align-items:flex-end; }
+.signal span { background:#fff; border-radius:1px; width:3px; }
+
+/* Header */
+.chat-header { background:#1c1c1e; padding:12px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #2c2c2e; }
+.back-btn { color:#0a84ff; font-size:14px; }
+.avatar { width:36px; height:36px; border-radius:50%; background:#30d158; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; color:#fff; flex-shrink:0; }
+.contact-info { flex:1; }
+.contact-name { color:#fff; font-size:15px; font-weight:600; }
+.contact-sub  { color:#8e8e93; font-size:12px; }
+.call-icons   { display:flex; gap:16px; color:#0a84ff; font-size:18px; }
+
+/* Messages area */
+.messages { flex:1; padding:16px 12px; overflow-y:auto; background:#000; display:flex; flex-direction:column; gap:4px; }
+
+/* SMS bubble */
+.bubble-wrap { display:flex; flex-direction:column; align-items:flex-start; margin-bottom:6px; }
+.bubble { background:#1c1c1e; border-radius:18px 18px 18px 4px; padding:10px 14px; max-width:82%; }
+.bubble-text { color:#fff; font-size:14px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+.bubble-time { color:#8e8e93; font-size:11px; margin-top:4px; }
+
+/* TRIAGE alert bubble — special styling */
+.bubble-alert { background:#1c1c1e; border-radius:18px 18px 18px 4px; padding:0; max-width:88%; overflow:hidden; }
+.alert-header { background:#ff3b30; padding:10px 14px 8px; }
+.alert-header-title { color:#fff; font-size:13px; font-weight:700; letter-spacing:0.5px; }
+.alert-header-sub   { color:#ffb3b0; font-size:11px; margin-top:2px; }
+.alert-body { padding:10px 14px 12px; }
+.alert-row  { display:flex; gap:8px; margin-bottom:6px; align-items:flex-start; }
+.alert-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+.alert-label { color:#8e8e93; font-size:10px; letter-spacing:1px; margin-bottom:1px; }
+.alert-val   { color:#fff; font-size:13px; font-weight:600; }
+.alert-desc  { color:#ebebf5cc; font-size:13px; line-height:1.4; margin-top:4px; }
+.alert-map-btn { background:#0a84ff; border-radius:10px; padding:8px 14px; text-align:center; margin-top:10px; color:#fff; font-size:13px; font-weight:600; text-decoration:none; display:block; }
+
+/* Severity colors */
+.sev-high   { color:#ff453a; }
+.sev-medium { color:#ffd60a; }
+.sev-low    { color:#30d158; }
+.cat-badge  { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.cat-flood  { background:#0a84ff30; color:#0a84ff; }
+.cat-fire   { background:#ff453a30; color:#ff453a; }
+.cat-medical{ background:#30d15830; color:#30d158; }
+.cat-infra  { background:#ffd60a30; color:#ffd60a; }
+
+/* Notification popup */
+.notif-popup { position:fixed; top:0; left:50%; transform:translateX(-50%);
+  width:360px; background:#1c1c1e; border-radius:0 0 16px 16px;
+  padding:12px 16px; z-index:100; box-shadow:0 4px 20px #000a;
+  animation:slideDown 0.4s ease; display:flex; gap:10px; align-items:flex-start; }
+.notif-popup.hide { animation:slideUp 0.3s ease forwards; }
+@keyframes slideDown { from{transform:translateX(-50%) translateY(-100%)} to{transform:translateX(-50%) translateY(0)} }
+@keyframes slideUp  { from{transform:translateX(-50%) translateY(0)} to{transform:translateX(-50%) translateY(-100%)} }
+.notif-icon { width:32px; height:32px; border-radius:8px; background:#ff3b30;
+  display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.notif-content { flex:1; }
+.notif-app  { color:#8e8e93; font-size:11px; margin-bottom:1px; }
+.notif-title{ color:#fff; font-size:13px; font-weight:600; }
+.notif-msg  { color:#8e8e93; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Typing indicator */
+.typing { display:flex; gap:4px; padding:10px 14px; background:#1c1c1e; border-radius:18px; width:fit-content; }
+.typing span { width:6px; height:6px; border-radius:50%; background:#8e8e93; animation:bounce 1.2s infinite; }
+.typing span:nth-child(2){ animation-delay:.2s; }
+.typing span:nth-child(3){ animation-delay:.4s; }
+@keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+/* Bottom bar */
+.bottom-bar { background:#1c1c1e; padding:10px 16px 24px; display:flex; align-items:center; gap:10px; border-top:1px solid #2c2c2e; }
+.msg-input  { flex:1; background:#2c2c2e; border:none; border-radius:20px; padding:8px 14px; color:#fff; font-size:14px; outline:none; }
+.send-btn   { width:32px; height:32px; border-radius:50%; background:#0a84ff; border:none; color:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <!-- Notification popup -->
+  <div class="notif-popup" id="notif-popup">
+    <div class="notif-icon">🚨</div>
+    <div class="notif-content">
+      <div class="notif-app">Messages · now</div>
+      <div class="notif-title" id="notif-title">TRIAGE-LAOR</div>
+      <div class="notif-msg"  id="notif-msg">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-time" id="clock">9:41</div>
+    <div class="status-icons">
+      <div class="signal">
+        <span style="height:4px"></span>
+        <span style="height:7px"></span>
+        <span style="height:10px"></span>
+        <span style="height:13px"></span>
+      </div>
+      WiFi 📶
+      🔋
+    </div>
+  </div>
+
+  <!-- Chat header -->
+  <div class="chat-header">
+    <div class="back-btn">‹ Messages</div>
+    <div class="avatar" id="avatar-initial">T</div>
+    <div class="contact-info">
+      <div class="contact-name" id="contact-name">TRIAGE-LAOR</div>
+      <div class="contact-sub">Emergency Dispatch System</div>
+    </div>
+    <div class="call-icons">📞 📹</div>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages" id="messages">
+    <!-- Messages injected here -->
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <input class="msg-input" placeholder="iMessage" readonly>
+    <button class="send-btn">↑</button>
+  </div>
+</div>
+
+<script>
+const reportId = new URLSearchParams(window.location.search).get('report');
+const responderName = new URLSearchParams(window.location.search).get('name') || 'Responder';
+
+// Update clock
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours() % 12 || 12;
+  let m = now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Set avatar
+const initials = responderName.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+document.getElementById('avatar-initial').textContent = initials;
+document.getElementById('contact-name').textContent   = 'TRIAGE-LAOR';
+
+const catClass = v => ({'Fire':'fire','Flooding':'flood','Medical Emergency':'medical','Infrastructure Damage':'infra'}[v]||'flood');
+const catEmoji = v => ({'Fire':'🔥','Flooding':'🌊','Medical Emergency':'🚑','Infrastructure Damage':'🚧'}[v]||'⚠️');
+
+function buildAlertBubble(r) {
+  const sev = r.severity?.toLowerCase() || 'high';
+  const cat = r.category || 'Unknown';
+  const loc = r.location_text || (r.lat ? `${parseFloat(r.lat).toFixed(5)}, ${parseFloat(r.lng).toFixed(5)}` : 'Location unknown');
+  const mapUrl = r.lat && r.lng
+    ? `https://maps.google.com/?q=${r.lat},${r.lng}`
+    : `https://maps.google.com/?q=${encodeURIComponent(loc)}`;
+  const now = new Date();
+  const timeStr = `${now.getHours()%12||12}:${now.getMinutes().toString().padStart(2,'0')} ${now.getHours()<12?'AM':'PM'}`;
+
+  return `
+    <div class="bubble-wrap">
+      <div class="bubble-alert">
+        <div class="alert-header">
+          <div class="alert-header-title">🚨 DISPATCH ALERT — RPT-${r.id}</div>
+          <div class="alert-header-sub">BDRRMC Barangay Del Rosario · ${timeStr}</div>
+        </div>
+        <div class="alert-body">
+          <div class="alert-row">
+            <div class="alert-icon">${catEmoji(cat)}</div>
+            <div>
+              <div class="alert-label">INCIDENT TYPE</div>
+              <div class="alert-val">
+                <span class="cat-badge cat-${catClass(cat)}">${cat}</span>
+              </div>
+            </div>
+          </div>
+          <div class="alert-row">
+            <div class="alert-icon">⚠️</div>
+            <div>
+              <div class="alert-label">SEVERITY</div>
+              <div class="alert-val sev-${sev}">${r.severity?.toUpperCase()} PRIORITY</div>
+            </div>
+          </div>
+          <div class="alert-row">
+            <div class="alert-icon">📍</div>
+            <div>
+              <div class="alert-label">LOCATION</div>
+              <div class="alert-val" style="font-size:12px">${loc}</div>
+            </div>
+          </div>
+          <div style="border-top:1px solid #2c2c2e;margin:8px 0"></div>
+          <div class="alert-label">INCIDENT REPORT</div>
+          <div class="alert-desc">${r.description}</div>
+          <a href="${mapUrl}" target="_blank" class="alert-map-btn">📍 Open Location in Maps</a>
+        </div>
+      </div>
+      <div class="bubble-time">TRIAGE-LAOR · Delivered</div>
+    </div>`;
+}
+
+function showNotification(r) {
+  const cat = r.category || 'Emergency';
+  const loc = r.location_text || 'See message';
+  document.getElementById('notif-title').textContent = `TRIAGE · RPT-${r.id}`;
+  document.getElementById('notif-msg').textContent   = `${cat} | ${r.severity} | ${loc}`;
+
+  const popup = document.getElementById('notif-popup');
+  popup.classList.remove('hide');
+  setTimeout(() => { popup.classList.add('hide'); }, 4000);
+  setTimeout(() => { popup.style.display='none'; }, 4400);
+}
+
+async function loadMessage() {
+  const messages = document.getElementById('messages');
+
+  // Show typing indicator first
+  messages.innerHTML = `<div class="typing" id="typing-indicator">
+    <span></span><span></span><span></span>
+  </div>`;
+
+  try {
+    const res = await fetch(`/reports/${reportId}/citizen`);
+    const r   = await res.json();
+
+    // After 1.5s show the message (simulate receiving)
+    setTimeout(() => {
+      document.getElementById('typing-indicator')?.remove();
+
+      // Old message placeholder
+      messages.innerHTML = `
+        <div style="text-align:center;color:#8e8e93;font-size:11px;margin:8px 0">Today</div>
+        ${buildAlertBubble(r)}`;
+
+      showNotification(r);
+      messages.scrollTop = messages.scrollHeight;
+    }, 1500);
+
+  } catch(e) {
+    setTimeout(() => {
+      messages.innerHTML = `<div style="color:#8e8e93;text-align:center;padding:20px;font-size:13px">
+        Could not load message.<br>Make sure app.py is running.
+      </div>`;
+    }, 1500);
+  }
+}
+
+loadMessage();
+</script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriageDelRo ML Prototype</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; background: #0d1117; color: #e6edf3; min-height: 100vh; padding: 24px; }
+  h1 { color: #58a6ff; font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #8b949e; font-size: 12px; margin-bottom: 24px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 20px; margin-bottom: 16px; }
+  label { display: block; font-size: 11px; color: #8b949e; letter-spacing: 1px; margin-bottom: 6px; }
+  textarea { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #e6edf3; font-family: monospace; font-size: 14px; padding: 10px; resize: vertical; outline: none; }
+  textarea:focus { border-color: #58a6ff; }
+  select { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #e6edf3; font-family: monospace; font-size: 13px; padding: 8px 10px; outline: none; }
+  button { background: #1f6feb; color: #fff; border: none; border-radius: 4px; padding: 10px 24px; font-family: monospace; font-size: 13px; font-weight: bold; cursor: pointer; letter-spacing: 1px; }
+  button:hover { background: #388bfd; }
+  button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .results { display: none; }
+  .results.show { display: block; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 3px; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: 1px solid; }
+  .badge-fire    { color: #f85149; border-color: #f8514940; background: #f8514910; }
+  .badge-flood   { color: #58a6ff; border-color: #58a6ff40; background: #58a6ff10; }
+  .badge-medical { color: #3fb950; border-color: #3fb95040; background: #3fb95010; }
+  .badge-infra   { color: #d29922; border-color: #d2992240; background: #d2992210; }
+  .badge-high    { color: #f85149; border-color: #f8514940; background: #f8514910; }
+  .badge-medium  { color: #d29922; border-color: #d2992240; background: #d2992210; }
+  .badge-low     { color: #3fb950; border-color: #3fb95040; background: #3fb95010; }
+  .badge-credible   { color: #3fb950; border-color: #3fb95040; background: #3fb95010; }
+  .badge-suspicious { color: #f85149; border-color: #f8514940; background: #f8514910; }
+  .badge-panic      { color: #f85149; border-color: #f8514940; background: #f8514910; }
+  .badge-urgent     { color: #d29922; border-color: #d2992240; background: #d2992210; }
+  .badge-normal     { color: #3fb950; border-color: #3fb95040; background: #3fb95010; }
+  .badge-casual     { color: #8b949e; border-color: #8b949e40; background: #8b949e10; }
+  .badge-deliberate { color: #8b949e; border-color: #8b949e40; background: #8b949e10; }
+  .badge-unknown    { color: #8b949e; border-color: #8b949e40; background: #8b949e10; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; }
+  .stat { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 14px; text-align: center; }
+  .stat-val { font-size: 24px; font-weight: bold; margin: 6px 0 4px; }
+  .stat-label { font-size: 10px; color: #8b949e; letter-spacing: 1px; }
+  .priority-bar { height: 8px; background: #21262d; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+  .priority-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .mismatch-box { background: #d2992215; border: 1px solid #d2992240; border-radius: 4px; padding: 12px; margin-top: 12px; color: #d29922; font-size: 12px; }
+  .normalize-box { background: #58a6ff10; border: 1px solid #58a6ff30; border-radius: 4px; padding: 10px 12px; margin-top: 0; font-size: 12px; color: #58a6ff; }
+  .suspicious-box { background: #f8514910; border: 1px solid #f8514940; border-radius: 4px; padding: 12px; margin-top: 10px; color: #f85149; font-size: 12px; }
+  .typing-box { background: #3fb95010; border: 1px solid #3fb95030; border-radius: 4px; padding: 10px 12px; margin-top: 10px; font-size: 12px; color: #3fb950; }
+  .section-title { font-size: 11px; color: #8b949e; letter-spacing: 2px; margin-bottom: 10px; border-bottom: 1px solid #21262d; padding-bottom: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
+  .bar-label { width: 130px; color: #8b949e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-bg { flex: 1; background: #21262d; border-radius: 2px; height: 6px; }
+  .bar-fg { height: 6px; border-radius: 2px; }
+  .bar-pct { width: 36px; text-align: right; color: #8b949e; }
+  #loading { display: none; color: #8b949e; font-size: 12px; margin-top: 8px; }
+  .demo-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .demo-btn { background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 3px; padding: 4px 10px; font-family: monospace; font-size: 11px; cursor: pointer; }
+  .demo-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+  /* live typing indicator */
+  #typing-live { font-size: 10px; color: #8b949e; margin-top: 6px; min-height: 16px; letter-spacing: 0.5px; }
+  .tl-panic { color: #f85149; }
+  .tl-urgent { color: #d29922; }
+  .tl-normal { color: #3fb950; }
+</style>
+</head>
+<body>
+
+<h1>⚡ TRIAGENAGA — ML PROTOTYPE</h1>
+<p class="sub">BDRRMC · BARANGAY DEL ROSARIO · MILAOR · CAMARINES SUR</p>
+
+<div class="card">
+  <div class="section-title">INCIDENT REPORT INPUT</div>
+  <label>DESCRIPTION — type naturally or try the demo buttons</label>
+  <textarea id="desc" rows="4" placeholder="Type an incident report... try typing fast like you're in a panic, or slow and deliberate"></textarea>
+  <div id="typing-live">⌨ Start typing to see real-time typing analysis...</div>
+
+  <div class="demo-btns">
+    <span style="font-size:10px;color:#8b949e;align-self:center;">QUICK DEMO:</span>
+    <button class="demo-btn" onclick="demo('SUUUNOOOOGGG!!!')">SUUUNOOOOGGG!!!</button>
+    <button class="demo-btn" onclick="demo('BAHA BAHA TULONGGG!!!')">BAHA TULONGGG!!!</button>
+    <button class="demo-btn" onclick="demo('haha sunog daw char joke lang')">prank</button>
+    <button class="demo-btn" onclick="demo('asdfghjkl 123')">gibberish</button>
+    <button class="demo-btn" onclick="demo('Baha na mataas sa Purok 3 hindi na makalabas ang mga tao')">real flood</button>
+    <button class="demo-btn" onclick="demo('May naaksidente sa kalsada may sugatan walang malay')">real medical</button>
+    <button class="demo-btn" onclick="demo('Nasusunog ang tatlong bahay sa Purok 2')">real fire</button>
+    <button class="demo-btn" onclick="demo('Bumagsak ang malaking puno sa kalsada naharang ang daan')">real infra</button>
+  </div>
+
+  <div style="margin-top:14px;" class="row">
+    <div>
+      <label>USER-SELECTED SEVERITY (optional)</label>
+      <select id="user_sev">
+        <option value="">-- not selected --</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+    </div>
+    <button id="btn" onclick="analyze()">▶ ANALYZE</button>
+  </div>
+  <div id="loading">⏳ Analyzing...</div>
+</div>
+
+<div class="results card" id="results">
+
+  <div id="norm-section" class="normalize-box" style="display:none">
+    <b>⚡ PANIC TEXT NORMALIZED</b><br>
+    <span style="color:#8b949e">Original :</span> <span id="orig-text"></span><br>
+    <span style="color:#8b949e">Cleaned&nbsp; :</span> <span id="norm-text"></span>
+  </div>
+
+  <div id="typing-result" class="typing-box" style="display:none;margin-top:10px">
+    <b>⌨ TYPING BEHAVIOR ANALYSIS</b><br>
+    <span id="typing-detail"></span>
+  </div>
+
+  <div id="susp-section" class="suspicious-box" style="display:none">
+    <b>⚠ SUSPICIOUS / PRANK REPORT</b><br>
+    <span id="susp-msg"></span>
+  </div>
+
+  <div id="mismatch-section" class="mismatch-box" style="display:none">
+    <b>⚠ SEVERITY MISMATCH DETECTED</b><br>
+    <span id="mismatch-msg"></span>
+  </div>
+
+  <div class="grid">
+    <div class="stat">
+      <div class="stat-label">CATEGORY</div>
+      <div class="stat-val" id="cat-val" style="font-size:13px;margin-top:8px"></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">SEVERITY</div>
+      <div class="stat-val" id="sev-val"></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">CREDIBILITY</div>
+      <div class="stat-val" id="cred-val" style="font-size:13px;margin-top:8px"></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">TYPING PROFILE</div>
+      <div class="stat-val" id="typing-profile-val" style="font-size:13px;margin-top:8px"></div>
+    </div>
+    <div class="stat" style="grid-column: span 1">
+      <div class="stat-label">PRIORITY SCORE</div>
+      <div class="stat-val" id="prio-val"></div>
+      <div class="priority-bar"><div class="priority-fill" id="prio-bar"></div></div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+    <div>
+      <div class="section-title">CATEGORY CONFIDENCE</div>
+      <div id="cat-bars"></div>
+    </div>
+    <div>
+      <div class="section-title">SEVERITY CONFIDENCE</div>
+      <div id="sev-bars"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Typing tracker ────────────────────────────────────────────────────────────
+const typingData = {
+  firstKeyTime: null,
+  lastKeyTime: null,
+  charCount: 0,
+  backspaceCount: 0,
+  wordCount: 0,
+  pauseCount: 0,
+  pauseThreshold: 1200, // ms — pause if gap > 1.2s
+};
+
+function resetTyping() {
+  typingData.firstKeyTime = null;
+  typingData.lastKeyTime = null;
+  typingData.charCount = 0;
+  typingData.backspaceCount = 0;
+  typingData.wordCount = 0;
+  typingData.pauseCount = 0;
+}
+
+const textarea = document.getElementById('desc');
+const typingLive = document.getElementById('typing-live');
+
+textarea.addEventListener('keydown', (e) => {
+  const now = Date.now();
+
+  if (!typingData.firstKeyTime) typingData.firstKeyTime = now;
+
+  // Detect pause
+  if (typingData.lastKeyTime && (now - typingData.lastKeyTime) > typingData.pauseThreshold) {
+    typingData.pauseCount++;
+  }
+
+  if (e.key === 'Backspace') {
+    typingData.backspaceCount++;
+  } else if (e.key.length === 1) {
+    typingData.charCount++;
+    if (e.key === ' ') typingData.wordCount++;
+  }
+
+  typingData.lastKeyTime = now;
+  updateLiveIndicator();
+});
+
+function updateLiveIndicator() {
+  if (!typingData.firstKeyTime || typingData.charCount < 3) {
+    typingLive.textContent = '⌨ Start typing to see real-time typing analysis...';
+    typingLive.className = '';
+    return;
+  }
+
+  const elapsed = (Date.now() - typingData.firstKeyTime) / 1000;
+  const cps = elapsed > 0 ? (typingData.charCount / elapsed).toFixed(1) : 0;
+  const bsRatio = typingData.charCount > 0
+    ? ((typingData.backspaceCount / typingData.charCount) * 100).toFixed(0)
+    : 0;
+
+  let profile, cls;
+  if (cps > 5)       { profile = '🔴 PANIC';    cls = 'tl-panic'; }
+  else if (cps > 3.5){ profile = '🟡 URGENT';   cls = 'tl-urgent'; }
+  else               { profile = '🟢 NORMAL';   cls = 'tl-normal'; }
+
+  typingLive.textContent =
+    `⌨ ${profile} — ${cps} chars/sec · ${typingData.backspaceCount} backspaces (${bsRatio}%) · ${typingData.pauseCount} pauses`;
+  typingLive.className = cls;
+}
+
+// ── Demo buttons ──────────────────────────────────────────────────────────────
+function demo(text) {
+  resetTyping();
+  textarea.value = text;
+  typingLive.textContent = '⌨ Demo text loaded — typing data not tracked for demo inputs.';
+  typingLive.className = '';
+  document.getElementById('user_sev').value = '';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function badgeCat(val) {
+  const m = { 'Fire':'fire','Flooding':'flood','Medical Emergency':'medical','Infrastructure Damage':'infra' };
+  return `<span class="badge badge-${m[val]||'flood'}">${val}</span>`;
+}
+function badgeSev(val) {
+  return `<span class="badge badge-${val.toLowerCase()}">${val}</span>`;
+}
+function badgeCred(val) {
+  return `<span class="badge badge-${val.toLowerCase()}">${val.toUpperCase()}</span>`;
+}
+function badgeTyping(val) {
+  return `<span class="badge badge-${val.toLowerCase()}">${val.toUpperCase()}</span>`;
+}
+function prioColor(s) {
+  return s >= 75 ? '#f85149' : s >= 50 ? '#d29922' : '#3fb950';
+}
+function barColor(p) {
+  return p >= 70 ? '#3fb950' : p >= 40 ? '#d29922' : '#f85149';
+}
+function makeBars(scores, el) {
+  el.innerHTML = '';
+  Object.entries(scores).sort((a,b)=>b[1]-a[1]).forEach(([lbl,val])=>{
+    const p = Math.round(val*100);
+    el.innerHTML += `<div class="bar-row">
+      <div class="bar-label">${lbl}</div>
+      <div class="bar-bg"><div class="bar-fg" style="width:${p}%;background:${barColor(p)}"></div></div>
+      <div class="bar-pct">${p}%</div></div>`;
+  });
+}
+
+// ── Analyze ───────────────────────────────────────────────────────────────────
+async function analyze() {
+  const desc = textarea.value.trim();
+  if (!desc) { alert('Enter a description first.'); return; }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').classList.remove('show');
+
+  // Build typing payload
+  const elapsed = typingData.firstKeyTime
+    ? Date.now() - typingData.firstKeyTime
+    : 0;
+
+  const payload = {
+    description: desc,
+    typing_data: {
+      total_time_ms:   elapsed,
+      char_count:      typingData.charCount,
+      backspace_count: typingData.backspaceCount,
+      word_count:      typingData.wordCount + 1,
+      pause_count:     typingData.pauseCount,
+    },
+  };
+  const userSev = document.getElementById('user_sev').value;
+  if (userSev) payload.user_severity = userSev;
+
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await res.json();
+
+    // Panic normalization
+    const normSec = document.getElementById('norm-section');
+    if (d.was_normalized) {
+      normSec.style.display = 'block';
+      document.getElementById('orig-text').textContent = d.original_input;
+      document.getElementById('norm-text').textContent = d.normalized_input;
+    } else normSec.style.display = 'none';
+
+    // Typing result
+    const t = d.typing;
+    const typingRes = document.getElementById('typing-result');
+    if (t && t.profile !== 'unknown') {
+      typingRes.style.display = 'block';
+      document.getElementById('typing-detail').innerHTML =
+        `Profile: <b>${t.profile.toUpperCase()}</b> &nbsp;|&nbsp; ` +
+        `Speed: <b>${t.cps} chars/sec</b> &nbsp;|&nbsp; ` +
+        `Backspace ratio: <b>${Math.round(t.backspace_ratio*100)}%</b> &nbsp;|&nbsp; ` +
+        `Pauses: <b>${t.pauses}</b> &nbsp;|&nbsp; ` +
+        `Panic score: <b>${Math.round(t.panic_score*100)}%</b>`;
+    } else typingRes.style.display = 'none';
+
+    // Suspicious
+    const suspSec = document.getElementById('susp-section');
+    if (d.is_suspicious) {
+      suspSec.style.display = 'block';
+      document.getElementById('susp-msg').textContent =
+        `Credibility: ${Math.round(d.credibility_score*100)}% — Report flagged as possible prank or irrelevant content.`;
+    } else suspSec.style.display = 'none';
+
+    // Mismatch
+    const mismatchSec = document.getElementById('mismatch-section');
+    if (d.mismatch && d.mismatch.mismatch) {
+      mismatchSec.style.display = 'block';
+      document.getElementById('mismatch-msg').textContent = d.mismatch.message;
+    } else mismatchSec.style.display = 'none';
+
+    // Stats
+    document.getElementById('cat-val').innerHTML = badgeCat(d.category);
+    document.getElementById('sev-val').innerHTML = badgeSev(d.severity);
+    document.getElementById('cred-val').innerHTML = badgeCred(d.credibility);
+    document.getElementById('typing-profile-val').innerHTML =
+      t ? badgeTyping(t.profile) : '<span class="badge badge-unknown">UNKNOWN</span>';
+
+    const prio = d.priority_score;
+    document.getElementById('prio-val').textContent = prio;
+    document.getElementById('prio-val').style.color = prioColor(prio);
+    document.getElementById('prio-bar').style.width = prio + '%';
+    document.getElementById('prio-bar').style.background = prioColor(prio);
+
+    makeBars(d.category_scores, document.getElementById('cat-bars'));
+    makeBars(d.severity_scores, document.getElementById('sev-bars'));
+
+    document.getElementById('results').classList.add('show');
+
+    // Reset typing for next report
+    resetTyping();
+
+  } catch(e) {
+    alert('Cannot reach server.\n\nMake sure app.py is running:\n  python app.py');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>

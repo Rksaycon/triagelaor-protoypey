@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriageDelRo — Track Report</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:monospace; background:#0d1117; color:#e6edf3; min-height:100vh; padding:20px; }
+h1 { color:#58a6ff; font-size:18px; margin-bottom:2px; }
+.sub { color:#8b949e; font-size:11px; margin-bottom:20px; }
+.nav { display:flex; gap:10px; margin-bottom:20px; }
+.nav a { color:#8b949e; font-size:11px; text-decoration:none; padding:4px 12px; border:1px solid #30363d; border-radius:3px; }
+.nav a:hover { color:#58a6ff; border-color:#58a6ff; }
+.card { background:#161b22; border:1px solid #30363d; border-radius:6px; padding:20px; margin-bottom:14px; }
+.section-title { font-size:10px; color:#8b949e; letter-spacing:2px; margin-bottom:14px; border-bottom:1px solid #21262d; padding-bottom:6px; }
+.steps { display:flex; align-items:center; margin-bottom:24px; }
+.step { flex:1; text-align:center; position:relative; }
+.step-circle { width:36px; height:36px; border-radius:50%; border:2px solid #30363d; background:#0d1117;
+  display:flex; align-items:center; justify-content:center; margin:0 auto 6px; font-size:14px; z-index:1; position:relative; }
+.step-label { font-size:9px; color:#8b949e; letter-spacing:1px; }
+.step-line { position:absolute; top:18px; left:50%; width:100%; height:2px; background:#30363d; z-index:0; }
+.step:last-child .step-line { display:none; }
+.step.done .step-circle { border-color:#3fb950; background:#3fb95015; }
+.step.done .step-label  { color:#3fb950; }
+.step.done .step-line   { background:#3fb950; }
+.step.active .step-circle { border-color:#58a6ff; background:#58a6ff15; animation:pulse 2s infinite; }
+.step.active .step-label  { color:#58a6ff; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 #58a6ff40} 50%{box-shadow:0 0 0 6px transparent} }
+.badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:10px; font-weight:bold; letter-spacing:1px; border:1px solid; }
+.badge-fire    { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-flood   { color:#58a6ff; border-color:#58a6ff40; background:#58a6ff10; }
+.badge-medical { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-infra   { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-high    { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-medium  { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-low     { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+.info-item { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:12px; }
+.info-lbl { font-size:9px; color:#8b949e; letter-spacing:1.5px; margin-bottom:4px; }
+.info-val { font-size:12px; font-weight:bold; }
+.status-box { text-align:center; padding:16px; border-radius:4px; margin-bottom:14px; }
+.status-pending  { background:#161b22; border:1px solid #d2992240; }
+.status-ongoing  { background:#58a6ff10; border:1px solid #58a6ff40; }
+.status-resolved { background:#3fb95010; border:1px solid #3fb95040; }
+.status-flagged  { background:#f8514910; border:1px solid #f8514940; }
+.big-status { font-size:20px; font-weight:bold; margin-bottom:6px; }
+.status-msg { font-size:10px; color:#8b949e; line-height:1.7; }
+.eta-box { background:#0d1117; border:1px solid #58a6ff40; border-radius:6px; padding:20px; text-align:center; margin:14px 0; }
+.eta-lbl { font-size:9px; color:#8b949e; letter-spacing:2px; margin-bottom:8px; }
+.eta-val { font-size:32px; font-weight:bold; margin-bottom:4px; }
+.eta-sub { font-size:10px; color:#8b949e; }
+.loc-section { margin-top:14px; }
+.loc-map { width:100%; height:200px; border:1px solid #30363d; border-radius:4px; margin-top:8px; }
+.loc-text-box { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:10px 12px; font-size:11px; color:#8b949e; margin-top:8px; display:flex; align-items:center; gap:8px; }
+.loc-none { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:10px 12px; font-size:10px; color:#3d5070; margin-top:8px; }
+.desc-box { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:12px; font-size:12px; color:#e6edf3; line-height:1.6; margin-top:8px; }
+.refresh-info { font-size:9px; color:#3d5070; text-align:center; margin-top:10px; }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<h1>⚡ TRIAGEDELRO — REPORT TRACKER</h1>
+<p class="sub">BDRRMC · BARANGAY DEL ROSARIO · MILAOR</p>
+<div class="nav">
+  <a href="/">📋 Submit New Report</a>
+  <a href="/dashboard">🖥 Official Dashboard</a>
+</div>
+
+<div class="card" id="main-card">
+  <div class="section-title">TRACKING — <span id="track-id" style="color:#58a6ff"></span></div>
+
+  <!-- Progress steps -->
+  <div class="steps">
+    <div class="step" id="step-submitted">
+      <div class="step-line"></div>
+      <div class="step-circle">📋</div>
+      <div class="step-label">SUBMITTED</div>
+    </div>
+    <div class="step" id="step-pending">
+      <div class="step-line"></div>
+      <div class="step-circle">🔍</div>
+      <div class="step-label">REVIEWING</div>
+    </div>
+    <div class="step" id="step-ongoing">
+      <div class="step-line"></div>
+      <div class="step-circle">🚒</div>
+      <div class="step-label">RESPONDING</div>
+    </div>
+    <div class="step" id="step-resolved">
+      <div class="step-line"></div>
+      <div class="step-circle">✅</div>
+      <div class="step-label">RESOLVED</div>
+    </div>
+  </div>
+
+  <!-- Dynamic content -->
+  <div id="status-area"></div>
+  <div class="refresh-info" id="refresh-info">Auto-refreshes every 5 seconds...</div>
+</div>
+
+<script>
+const reportId = window.location.pathname.split('/').pop();
+document.getElementById('track-id').textContent = 'RPT-' + reportId;
+
+const catClass  = v => ({'Fire':'fire','Flooding':'flood','Medical Emergency':'medical','Infrastructure Damage':'infra'}[v]||'flood');
+const prioColor = s => s>=75?'#f85149':s>=50?'#d29922':'#3fb950';
+let trackMap = null;
+
+function setSteps(status) {
+  const order = ['submitted','pending','ongoing','resolved'];
+  const activeMap = { 'Pending':'pending', 'Ongoing':'ongoing', 'Resolved':'resolved' };
+  const active = activeMap[status] || 'pending';
+  const activeIdx = order.indexOf(active);
+  order.forEach((s, i) => {
+    const el = document.getElementById('step-' + s);
+    el.className = 'step';
+    if (i < activeIdx) el.classList.add('done');
+    else if (i === activeIdx) el.classList.add('active');
+  });
+}
+
+function buildLocationSection(d) {
+  if (d.lat && d.lng) {
+    // Has GPS — show map + coords + optional text
+    return `
+      <div class="loc-section">
+        <div style="font-size:9px;color:#8b949e;letter-spacing:1.5px;margin-bottom:6px">📍 INCIDENT LOCATION</div>
+        <div style="font-size:11px;color:#3fb950;margin-bottom:4px">
+          GPS: ${parseFloat(d.lat).toFixed(6)}, ${parseFloat(d.lng).toFixed(6)}
+        </div>
+        ${d.location_text ? `<div class="loc-text-box">📌 ${d.location_text}</div>` : ''}
+        <div id="track-map" class="loc-map"></div>
+      </div>`;
+  } else if (d.location_text) {
+    // No GPS but has text
+    return `
+      <div class="loc-section">
+        <div style="font-size:9px;color:#8b949e;letter-spacing:1.5px;margin-bottom:6px">📌 INCIDENT LOCATION</div>
+        <div class="loc-text-box">📌 ${d.location_text}</div>
+      </div>`;
+  } else {
+    // No location at all
+    return `
+      <div class="loc-section">
+        <div class="loc-none">⚠ No location was provided with this report.</div>
+      </div>`;
+  }
+}
+
+function initMap(lat, lng, category) {
+  const mapEl = document.getElementById('track-map');
+  if (!mapEl || trackMap) return;
+  const colors = {'Fire':'#f85149','Flooding':'#58a6ff','Medical Emergency':'#3fb950','Infrastructure Damage':'#d29922'};
+  const color = colors[category] || '#f85149';
+  trackMap = L.map('track-map', { zoomControl:true, attributionControl:false }).setView([lat, lng], 16);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(trackMap);
+  L.circleMarker([lat, lng], {
+    radius:12, fillColor:color, color:'#fff', weight:2, fillOpacity:0.9
+  }).addTo(trackMap).bindPopup(`RPT-${reportId}<br>${category}`).openPopup();
+}
+
+function renderStatus(d) {
+  const area = document.getElementById('status-area');
+  const locHtml = buildLocationSection(d);
+
+  if (d.credibility === 'suspicious') {
+    setSteps('Pending');
+    area.innerHTML = `
+      <div class="status-box status-flagged">
+        <div class="big-status" style="color:#f85149">⚠ REPORT FLAGGED</div>
+        <div class="status-msg">Our system detected this report may be unclear or a false alarm.<br>
+        If this is a real emergency, please <a href="/" style="color:#f85149">submit a new report</a> with a clearer description.</div>
+      </div>`;
+    return;
+  }
+
+  const infoGrid = `
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-lbl">CATEGORY</div>
+        <div class="info-val"><span class="badge badge-${catClass(d.category)}">${d.category}</span></div>
+      </div>
+      <div class="info-item">
+        <div class="info-lbl">SEVERITY</div>
+        <div class="info-val"><span class="badge badge-${d.severity.toLowerCase()}">${d.severity}</span></div>
+      </div>
+      <div class="info-item">
+        <div class="info-lbl">PRIORITY SCORE</div>
+        <div class="info-val" style="color:${prioColor(d.priority_score)}">${d.priority_score} / 100</div>
+      </div>
+      <div class="info-item">
+        <div class="info-lbl">SUBMITTED</div>
+        <div class="info-val" style="font-size:11px;color:#8b949e">${d.time_label || '—'}</div>
+      </div>
+    </div>`;
+
+  const descHtml = d.description ? `
+    <div style="margin-top:14px">
+      <div style="font-size:9px;color:#8b949e;letter-spacing:1.5px;margin-bottom:6px">YOUR REPORT</div>
+      <div class="desc-box">${d.description}</div>
+    </div>` : '';
+
+  if (d.status === 'Pending') {
+    setSteps('Pending');
+    area.innerHTML = `
+      <div class="status-box status-pending">
+        <div class="big-status" style="color:#d29922">⏳ AWAITING OFFICIAL REVIEW</div>
+        <div class="status-msg">A barangay official will review your report shortly.<br>
+        You will see an ETA here once they begin responding.<br>
+        <span id="pulse-dots" style="color:#3d5070;font-size:9px">● checking for updates...</span></div>
+      </div>
+      ${infoGrid}
+      ${descHtml}
+      ${locHtml}`;
+
+  } else if (d.status === 'Ongoing') {
+    setSteps('Ongoing');
+    const eta = d.eta;
+    const etaColor = d.severity==='High'?'#f85149':d.severity==='Medium'?'#d29922':'#58a6ff';
+    area.innerHTML = `
+      <div class="status-box status-ongoing">
+        <div class="big-status" style="color:#58a6ff">🚒 RESPONSE DISPATCHED</div>
+        <div class="status-msg">A barangay official has accepted your report and is responding.</div>
+      </div>
+      <div class="eta-box">
+        <div class="eta-lbl">ESTIMATED RESPONSE TIME</div>
+        <div class="eta-val" style="color:${etaColor}">${eta ? eta.eta_label : 'Being assessed'}</div>
+        <div class="eta-sub">${eta ? eta.message : ''}</div>
+        ${eta && eta.queue_delay_added > 0
+          ? `<div style="font-size:10px;color:#d29922;margin-top:8px">⚠ ${eta.pending_ahead} reports ahead — +${eta.queue_delay_added} min added</div>`
+          : ''}
+      </div>
+      ${infoGrid}
+      ${descHtml}
+      ${locHtml}`;
+
+  } else if (d.status === 'Resolved') {
+    setSteps('Resolved');
+    area.innerHTML = `
+      <div class="status-box status-resolved">
+        <div style="font-size:28px;margin-bottom:8px">✅</div>
+        <div class="big-status" style="color:#3fb950">INCIDENT RESOLVED</div>
+        <div class="status-msg">Your report has been resolved by barangay officials.<br>
+        Thank you for helping keep Barangay Del Rosario safe.</div>
+      </div>
+      ${infoGrid}
+      ${descHtml}
+      ${locHtml}`;
+  }
+
+  // Init map after DOM is updated
+  if (d.lat && d.lng) {
+    setTimeout(() => initMap(parseFloat(d.lat), parseFloat(d.lng), d.category), 100);
+  }
+}
+
+let dots = 0;
+async function poll() {
+  try {
+    const res = await fetch(`/reports/${reportId}/citizen`);
+    if (!res.ok) {
+      document.getElementById('status-area').innerHTML =
+        `<div style="color:#f85149;text-align:center;padding:20px">Report not found. Check your report ID.</div>`;
+      return;
+    }
+    const d = await res.json();
+    renderStatus(d);
+
+    // Animate pulse dots if pending
+    const pulseEl = document.getElementById('pulse-dots');
+    if (pulseEl) {
+      dots = (dots + 1) % 4;
+      pulseEl.textContent = '● checking for updates' + '.'.repeat(dots);
+    }
+
+    document.getElementById('refresh-info').textContent =
+      `Last checked: ${new Date().toLocaleTimeString()} · Auto-refreshes every 5s`;
+  } catch(e) {
+    document.getElementById('refresh-info').textContent = 'Connection error — retrying...';
+  }
+}
+
+poll();
+setInterval(poll, 5000);
+</script>
+</body>
+</html>

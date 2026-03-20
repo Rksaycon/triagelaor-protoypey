@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriageDelRo — Official Dashboard</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:monospace; background:#0d1117; color:#e6edf3; min-height:100vh; padding:20px; }
+h1 { color:#58a6ff; font-size:18px; margin-bottom:2px; }
+.sub { color:#8b949e; font-size:11px; margin-bottom:16px; }
+.nav { display:flex; gap:10px; margin-bottom:18px; }
+.nav a { color:#8b949e; font-size:11px; text-decoration:none; padding:4px 12px; border:1px solid #30363d; border-radius:3px; }
+.nav a:hover,.nav a.active { color:#58a6ff; border-color:#58a6ff; }
+.stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:14px; }
+.stat { background:#161b22; border:1px solid #30363d; border-radius:5px; padding:12px; text-align:center; }
+.stat-val { font-size:26px; font-weight:bold; margin:3px 0; }
+.stat-lbl { font-size:9px; color:#8b949e; letter-spacing:1.5px; }
+.layout { display:grid; grid-template-columns:1fr 420px; gap:14px; }
+@media(max-width:900px){ .layout { grid-template-columns:1fr; } }
+.badge { display:inline-block; padding:2px 7px; border-radius:3px; font-size:9px; font-weight:bold; letter-spacing:1px; border:1px solid; }
+.badge-fire    { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-flood   { color:#58a6ff; border-color:#58a6ff40; background:#58a6ff10; }
+.badge-medical { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-infra   { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-high    { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-medium  { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-low     { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-credible   { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-suspicious { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-pending    { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-ongoing    { color:#58a6ff; border-color:#58a6ff40; background:#58a6ff10; }
+.badge-resolved   { color:#3fb950; border-color:#3fb95040; background:#3fb95010; }
+.badge-panic   { color:#f85149; border-color:#f8514940; background:#f8514910; }
+.badge-urgent  { color:#d29922; border-color:#d2992240; background:#d2992210; }
+.badge-normal,.badge-casual,.badge-deliberate,.badge-unknown { color:#8b949e; border-color:#8b949e40; background:#8b949e10; }
+.section-title { font-size:10px; color:#8b949e; letter-spacing:2px; margin-bottom:10px;
+  border-bottom:1px solid #21262d; padding-bottom:5px; display:flex; justify-content:space-between; align-items:center; }
+.report-card { background:#161b22; border:1px solid #30363d; border-radius:5px;
+  padding:13px; margin-bottom:9px; border-left:3px solid #30363d; cursor:pointer; transition:border-color .2s; }
+.report-card:hover { border-color:#58a6ff40; }
+.report-card.escalated { border-left-color:#e3a008; }
+.report-card.suspicious { border-left-color:#f85149; opacity:0.7; }
+.report-card.resolved { opacity:0.4; }
+.report-card.selected { border-color:#58a6ff; }
+.report-top { display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-bottom:7px; }
+.report-desc { font-size:11px; color:#e6edf3; margin-bottom:7px; line-height:1.5; }
+.report-loc { font-size:10px; color:#8b949e; margin-bottom:7px; }
+.report-bottom { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.pbar-wrap { flex:1; min-width:80px; }
+.pbar { height:5px; background:#21262d; border-radius:3px; overflow:hidden; }
+.pfill { height:100%; border-radius:3px; }
+.pval { font-size:10px; font-weight:bold; margin-bottom:2px; }
+.time-lbl { font-size:9px; color:#8b949e; margin-left:auto; }
+.esc-badge { background:#e3a00815; border:1px solid #e3a00840; color:#e3a008; font-size:9px; padding:2px 7px; border-radius:3px; font-weight:bold; }
+.decay-badge { background:#58a6ff10; border:1px solid #58a6ff30; color:#58a6ff; font-size:9px; padding:2px 7px; border-radius:3px; }
+.loc-badge { background:#58a6ff08; border:1px solid #58a6ff20; color:#58a6ff; font-size:9px; padding:2px 7px; border-radius:3px; }
+select.status-sel { background:#0d1117; border:1px solid #30363d; color:#8b949e; font-family:monospace; font-size:10px; padding:3px 6px; border-radius:3px; outline:none; cursor:pointer; }
+.dispatch-btn { background:#1f6feb20; border:1px solid #1f6feb60; color:#58a6ff; font-family:monospace; font-size:9px; padding:3px 8px; border-radius:3px; cursor:pointer; }
+.dispatch-btn:hover { background:#1f6feb40; }
+.dispatched-badge { background:#3fb95010; border:1px solid #3fb95040; color:#3fb950; font-size:9px; padding:2px 8px; border-radius:3px; }
+.modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:#000000cc; z-index:1000; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:24px; width:90%; max-width:420px; }
+.modal-title { font-size:12px; font-weight:bold; color:#e6edf3; letter-spacing:2px; margin-bottom:16px; border-bottom:1px solid #21262d; padding-bottom:8px; }
+.responder-card { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:10px 12px; margin-bottom:8px; cursor:pointer; transition:border-color .2s; }
+.responder-card:hover { border-color:#58a6ff; }
+.responder-card.selected { border-color:#3fb950; background:#3fb95008; }
+.sms-preview { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:10px; font-size:10px; color:#8b949e; white-space:pre-wrap; margin-top:10px; max-height:120px; overflow-y:auto; display:none; }
+.manage-btn { background:#21262d; border:1px solid #30363d; color:#8b949e; font-family:monospace; font-size:9px; padding:3px 10px; border-radius:3px; cursor:pointer; }
+.empty { color:#8b949e; font-size:12px; text-align:center; padding:40px; }
+.filter-row { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.filter-btn { background:#21262d; border:1px solid #30363d; color:#8b949e; font-family:monospace; font-size:10px; padding:4px 10px; border-radius:3px; cursor:pointer; }
+.filter-btn.active { border-color:#58a6ff; color:#58a6ff; }
+/* Map panel */
+.map-panel { background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; position:sticky; top:20px; }
+.map-panel-title { padding:12px 14px; font-size:10px; color:#8b949e; letter-spacing:2px; border-bottom:1px solid #21262d; }
+#main-map { width:100%; height:380px; }
+.map-detail { padding:12px 14px; font-size:11px; color:#8b949e; min-height:60px; border-top:1px solid #21262d; }
+.map-detail b { color:#e6edf3; }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<!-- Dispatch Modal -->
+<div class="modal-overlay" id="dispatch-modal">
+  <div class="modal">
+    <div class="modal-title">📡 DISPATCH RESPONDER</div>
+    <div style="font-size:10px;color:#8b949e;margin-bottom:12px">
+      Select a responder — an SMS will be sent to their phone immediately.
+    </div>
+    <div id="dispatch-report-info" style="background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:10px;margin-bottom:14px;font-size:11px;color:#e6edf3"></div>
+    <div style="font-size:9px;color:#8b949e;letter-spacing:1.5px;margin-bottom:8px">SELECT RESPONDER</div>
+    <div id="responder-list-modal"></div>
+    <div class="sms-preview" id="sms-preview"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="closeDispatch()"
+        style="flex:1;background:#21262d;border:1px solid #30363d;color:#8b949e;font-family:monospace;font-size:11px;padding:8px;border-radius:4px;cursor:pointer">
+        CANCEL
+      </button>
+      <button onclick="confirmDispatch()" id="dispatch-confirm-btn"
+        style="flex:2;background:#1f6feb;border:none;color:#fff;font-family:monospace;font-size:11px;padding:8px;border-radius:4px;cursor:pointer;font-weight:bold;letter-spacing:1px">
+        📱 DISPATCH + SEND SMS
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Responders Modal -->
+<div class="modal-overlay" id="responders-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-title">👥 MANAGE RESPONDERS</div>
+    <div id="responders-list-manage"></div>
+    <div style="border-top:1px solid #21262d;padding-top:14px;margin-top:14px">
+      <div style="font-size:9px;color:#8b949e;letter-spacing:1.5px;margin-bottom:10px">ADD NEW RESPONDER</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <input id="new-name"  placeholder="Full name"   style="background:#0d1117;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-family:monospace;font-size:11px;padding:8px;outline:none">
+        <input id="new-role"  placeholder="Role/Title"  style="background:#0d1117;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-family:monospace;font-size:11px;padding:8px;outline:none">
+      </div>
+      <input id="new-phone" placeholder="Phone number e.g. 09171234567" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-family:monospace;font-size:11px;padding:8px;outline:none;margin-bottom:8px">
+      <button onclick="addResponder()"
+        style="width:100%;background:#1f6feb;border:none;color:#fff;font-family:monospace;font-size:11px;padding:8px;border-radius:4px;cursor:pointer;font-weight:bold">
+        + ADD RESPONDER
+      </button>
+    </div>
+    <button onclick="document.getElementById('responders-modal').classList.remove('show')"
+      style="width:100%;margin-top:10px;background:#21262d;border:1px solid #30363d;color:#8b949e;font-family:monospace;font-size:11px;padding:8px;border-radius:4px;cursor:pointer">
+      CLOSE
+    </button>
+  </div>
+</div>
+
+<h1>⚡ TRIAGEDELRO — OFFICIAL DASHBOARD</h1>
+<p class="sub">BDRRMC · BARANGAY DEL ROSARIO · MILAOR — Reports ranked by ML Priority Score</p>
+<div class="nav">
+  <a href="/">📋 Submit Report</a>
+  <a href="/dashboard" class="active">🖥 Official Dashboard</a>
+  <a href="#" onclick="openRespondersModal()">👥 Manage Responders</a>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat"><div class="stat-lbl">TOTAL</div><div class="stat-val" id="s-total" style="color:#58a6ff">0</div></div>
+  <div class="stat"><div class="stat-lbl">PENDING</div><div class="stat-val" id="s-pending" style="color:#d29922">0</div></div>
+  <div class="stat"><div class="stat-lbl">HIGH</div><div class="stat-val" id="s-high" style="color:#f85149">0</div></div>
+  <div class="stat"><div class="stat-lbl">ESCALATED</div><div class="stat-val" id="s-esc" style="color:#e3a008">0</div></div>
+  <div class="stat"><div class="stat-lbl">SUSPICIOUS</div><div class="stat-val" id="s-susp" style="color:#f85149">0</div></div>
+  <div class="stat"><div class="stat-lbl">WITH GPS</div><div class="stat-val" id="s-gps" style="color:#3fb950">0</div></div>
+  <div class="stat"><div class="stat-lbl">RESOLVED</div><div class="stat-val" id="s-res" style="color:#3fb950">0</div></div>
+</div>
+
+<!-- AI Tactical Briefing -->
+<div id="ai-summary-card" style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:18px;margin-bottom:14px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="ai-dot" style="width:8px;height:8px;border-radius:50%;background:#58a6ff;box-shadow:0 0 6px #58a6ff"></div>
+      <span style="font-size:10px;color:#8b949e;letter-spacing:2px">TRIAGE-AI — TACTICAL BRIEFING</span>
+      <span style="font-size:9px;color:#3d5070" id="ai-time"></span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <span id="ai-status-badge" style="font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid #30363d;color:#8b949e"></span>
+      <button onclick="loadSummary()" id="ai-refresh-btn"
+        style="background:#21262d;border:1px solid #30363d;color:#8b949e;font-family:monospace;font-size:9px;padding:3px 10px;border-radius:3px;cursor:pointer">
+        ↻ REFRESH
+      </button>
+    </div>
+  </div>
+  <!-- Mini stats row -->
+  <div id="ai-mini-stats" style="display:none;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
+  <!-- Briefing text -->
+  <div id="ai-summary-text"
+    style="font-size:11px;color:#8b949e;line-height:1.9;min-height:40px;white-space:pre-wrap;font-family:monospace">
+    ⏳ Loading AI tactical briefing...
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="filter-row">
+  <span style="font-size:9px;color:#8b949e;align-self:center">FILTER:</span>
+  <button class="filter-btn active" onclick="setFilter('all',this)">ALL</button>
+  <button class="filter-btn" onclick="setFilter('pending',this)">PENDING</button>
+  <button class="filter-btn" onclick="setFilter('escalated',this)">ESCALATED</button>
+  <button class="filter-btn" onclick="setFilter('suspicious',this)">SUSPICIOUS</button>
+  <button class="filter-btn" onclick="setFilter('high',this)">HIGH SEVERITY</button>
+  <button class="filter-btn" onclick="setFilter('gps',this)">HAS GPS</button>
+  <button class="filter-btn" onclick="setFilter('resolved',this)">RESOLVED</button>
+</div>
+
+<!-- Main layout: reports list + map -->
+<div class="layout">
+
+  <!-- Reports list -->
+  <div>
+    <div class="section-title">
+      <span>INCIDENT REPORTS — ML PRIORITY RANKED</span>
+      <span id="refresh-info" style="font-size:9px;color:#8b949e;font-weight:normal"></span>
+    </div>
+    <div id="report-list"><div class="empty">No reports yet.</div></div>
+  </div>
+
+  <!-- Map panel -->
+  <div class="map-panel">
+    <div class="map-panel-title">📍 INCIDENT MAP — click a report to locate</div>
+    <div id="main-map"></div>
+    <div class="map-detail" id="map-detail">Click a report with GPS data to see its location here.</div>
+  </div>
+
+</div>
+
+<script>
+let currentFilter = 'all';
+let allReports = [];
+
+// ── AI Tactical Briefing ──────────────────────────────────────────────────────
+async function loadSummary() {
+  const textEl   = document.getElementById('ai-summary-text');
+  const dotEl    = document.getElementById('ai-dot');
+  const timeEl   = document.getElementById('ai-time');
+  const card     = document.getElementById('ai-summary-card');
+  const badge    = document.getElementById('ai-status-badge');
+  const statsEl  = document.getElementById('ai-mini-stats');
+  const btn      = document.getElementById('ai-refresh-btn');
+
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  textEl.style.color = '#3d5070';
+  textEl.textContent = '⏳ TRIAGE-AI is analyzing current situation...';
+
+  try {
+    const res  = await fetch('/summary');
+    const data = await res.json();
+
+    // Format text — highlight section headers
+    let formatted = data.summary;
+    const headers = ['SITUATION OVERVIEW','HIGHEST PRIORITY INCIDENTS',
+                     'PATTERN ANALYSIS','RECOMMENDED ACTIONS','WATCH LIST'];
+    headers.forEach(h => {
+      formatted = formatted.replaceAll(h,
+        `\n▌ ${h}\n`);
+    });
+    textEl.textContent = formatted.trim();
+    timeEl.textContent = `· ${new Date().toLocaleTimeString()}`;
+
+    // Color + border based on status
+    const colors = {
+      critical: { text:'#f85149', dot:'#f85149', border:'#f8514940', badge:'CRITICAL', badgeBg:'#f8514910', badgeBorder:'#f8514940' },
+      warning:  { text:'#d29922', dot:'#d29922', border:'#d2992240', badge:'WARNING',  badgeBg:'#d2992210', badgeBorder:'#d2992240' },
+      normal:   { text:'#3fb950', dot:'#3fb950', border:'#3fb95030', badge:'STABLE',   badgeBg:'#3fb95010', badgeBorder:'#3fb95040' },
+      clear:    { text:'#8b949e', dot:'#3fb950', border:'#30363d',   badge:'ALL CLEAR',badgeBg:'#3fb95010', badgeBorder:'#3fb95040' },
+    };
+    const c = colors[data.status] || colors.normal;
+    textEl.style.color   = c.text;
+    dotEl.style.background  = c.dot;
+    dotEl.style.boxShadow   = `0 0 8px ${c.dot}`;
+    card.style.borderColor  = c.border;
+    badge.textContent       = c.badge;
+    badge.style.color       = c.dot;
+    badge.style.background  = c.badgeBg;
+    badge.style.borderColor = c.badgeBorder;
+
+    // Mini stats
+    if (data.stats) {
+      const s = data.stats;
+      const items = [
+        { label:'PENDING',  val:s.pending,   color:'#d29922' },
+        { label:'ONGOING',  val:s.ongoing,   color:'#58a6ff' },
+        { label:'HIGH',     val:s.high,      color:'#f85149' },
+        { label:'ESC',      val:s.escalated, color:'#e3a008' },
+        { label:'FLOOD',    val:s.flood,     color:'#58a6ff' },
+        { label:'FIRE',     val:s.fire,      color:'#f85149' },
+        { label:'MEDICAL',  val:s.medical,   color:'#3fb950' },
+        { label:'INFRA',    val:s.infra,     color:'#d29922' },
+        { label:'FLAGGED',  val:s.suspicious,color:'#f85149' },
+      ];
+      statsEl.style.display = 'flex';
+      statsEl.innerHTML = items.map(i =>
+        `<div style="background:#0d1117;border:1px solid #21262d;border-radius:3px;padding:4px 8px;text-align:center">
+          <div style="font-size:16px;font-weight:bold;color:${i.color}">${i.val}</div>
+          <div style="font-size:8px;color:#8b949e;letter-spacing:1px">${i.label}</div>
+        </div>`
+      ).join('');
+    }
+
+  } catch(e) {
+    textEl.textContent = 'Could not connect to TRIAGE-AI. Check server connection.';
+    textEl.style.color = '#8b949e';
+  } finally {
+    btn.textContent = '↻ REFRESH';
+    btn.disabled = false;
+  }
+}
+let mainMap = null;
+let markers = {};
+let selectedId = null;
+
+// ── Init map ──────────────────────────────────────────────────────────────────
+// Default center: Barangay Del Rosario, Milaor, Camarines Sur
+mainMap = L.map('main-map').setView([13.5850, 123.1800], 15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { attribution:'© OSM' }).addTo(mainMap);
+
+const catColor = v => ({'Fire':'#f85149','Flooding':'#58a6ff',
+  'Medical Emergency':'#3fb950','Infrastructure Damage':'#d29922'}[v]||'#8b949e');
+
+function addMarker(r) {
+  if (!r.lat || !r.lng) return;
+  if (markers[r.id]) { markers[r.id].remove(); }
+  const color = catColor(r.category);
+  const icon = L.divIcon({
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};
+           border:2px solid #fff;box-shadow:0 0 6px ${color}88"></div>`,
+    className:'', iconSize:[14,14], iconAnchor:[7,7]
+  });
+  const m = L.marker([r.lat, r.lng], {icon})
+    .addTo(mainMap)
+    .bindPopup(`<b>RPT-${r.id}</b><br>${r.category} · ${r.severity}<br>${r.description.substring(0,60)}...`);
+  m.on('click', () => selectReport(r.id));
+  markers[r.id] = m;
+}
+
+function clearMarkers() {
+  Object.values(markers).forEach(m => m.remove());
+  markers = {};
+}
+
+function selectReport(id) {
+  selectedId = id;
+  const r = allReports.find(x => x.id === id);
+  if (!r) return;
+
+  // Highlight card
+  document.querySelectorAll('.report-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('card-' + id);
+  if (card) { card.classList.add('selected'); card.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+
+  // Update map detail
+  const detail = document.getElementById('map-detail');
+  if (r.lat && r.lng) {
+    mainMap.setView([r.lat, r.lng], 17);
+    if (markers[r.id]) markers[r.id].openPopup();
+    detail.innerHTML = `<b>RPT-${r.id}</b> — ${r.category} · ${r.severity}<br>
+      📍 ${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}<br>
+      ${r.location_text ? '📌 ' + r.location_text + '<br>' : ''}
+      <span style="color:#8b949e">${r.description.substring(0,80)}...</span>`;
+  } else {
+    detail.innerHTML = `<b>RPT-${r.id}</b> — No GPS data<br>
+      ${r.location_text ? '📌 ' + r.location_text : 'No location provided'}<br>
+      <span style="color:#8b949e">${r.description.substring(0,80)}...</span>`;
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+const catClass = v => ({'Fire':'fire','Flooding':'flood','Medical Emergency':'medical','Infrastructure Damage':'infra'}[v]||'flood');
+const prioColor = s => s>=75?'#f85149':s>=50?'#d29922':'#3fb950';
+const elapsed = m => m<1?'just now':m<60?`${m}m ago`:`${Math.floor(m/60)}h ${m%60}m ago`;
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function getFiltered() {
+  if (currentFilter==='all')        return allReports;
+  if (currentFilter==='pending')    return allReports.filter(r=>r.status==='Pending');
+  if (currentFilter==='escalated')  return allReports.filter(r=>r.escalated);
+  if (currentFilter==='suspicious') return allReports.filter(r=>r.credibility==='suspicious');
+  if (currentFilter==='high')       return allReports.filter(r=>r.severity==='High');
+  if (currentFilter==='gps')        return allReports.filter(r=>r.lat&&r.lng);
+  if (currentFilter==='resolved')   return allReports.filter(r=>r.status==='Resolved');
+  return allReports;
+}
+
+function render() {
+  // Stats
+  document.getElementById('s-total').textContent   = allReports.length;
+  document.getElementById('s-pending').textContent = allReports.filter(r=>r.status==='Pending').length;
+  document.getElementById('s-high').textContent    = allReports.filter(r=>r.severity==='High').length;
+  document.getElementById('s-esc').textContent     = allReports.filter(r=>r.escalated).length;
+  document.getElementById('s-susp').textContent    = allReports.filter(r=>r.credibility==='suspicious').length;
+  document.getElementById('s-gps').textContent     = allReports.filter(r=>r.lat&&r.lng).length;
+  document.getElementById('s-res').textContent     = allReports.filter(r=>r.status==='Resolved').length;
+
+  // Markers
+  clearMarkers();
+  allReports.forEach(r => addMarker(r));
+
+  // Cards
+  const list = document.getElementById('report-list');
+  const reports = getFiltered();
+  if (!reports.length) { list.innerHTML='<div class="empty">No reports match this filter.</div>'; return; }
+
+  list.innerHTML = reports.map(r => {
+    const p = r.current_priority;
+    const cardClass = r.escalated?'escalated':r.credibility==='suspicious'?'suspicious':r.status==='Resolved'?'resolved':'';
+    const locHtml = r.lat && r.lng
+      ? `<div class="report-loc">📍 ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}${r.location_text?' · '+r.location_text:''}</div>`
+      : r.location_text
+      ? `<div class="report-loc">📌 ${r.location_text}</div>`
+      : `<div class="report-loc" style="color:#3d5070">⚠ No location provided</div>`;
+
+    return `<div class="report-card ${cardClass}${selectedId===r.id?' selected':''}" id="card-${r.id}" onclick="selectReport('${r.id}')">
+      <div class="report-top">
+        <span style="font-size:9px;color:#8b949e">RPT-${r.id}</span>
+        <span class="badge badge-${catClass(r.category)}">${r.category}</span>
+        <span class="badge badge-${r.severity.toLowerCase()}">${r.severity}</span>
+        <span class="badge badge-${r.credibility}">${r.credibility.toUpperCase()}</span>
+        <span class="badge badge-${r.typing_profile}">${r.typing_profile.toUpperCase()}</span>
+        ${r.escalated?'<span class="esc-badge">🚨 ESCALATED</span>':''}
+        ${r.decay_boost>0?`<span class="decay-badge">⏱ +${r.decay_boost}</span>`:''}
+        ${r.lat&&r.lng?'<span class="loc-badge">📍 GPS</span>':''}
+        <span class="time-lbl">${r.time_label} · ${elapsed(r.elapsed_min)}</span>
+      </div>
+      <div class="report-desc">${r.description}</div>
+      ${locHtml}
+      <div style="font-size:9px;color:#58a6ff;margin-bottom:7px">⏱ ETA: ${r.eta_label || 'Pending official response'}</div>
+      ${r.dispatched_to ? `<div style="font-size:9px;color:#3fb950;margin-bottom:7px">📡 DISPATCHED TO: ${r.dispatched_to} at ${r.dispatched_at||''}</div>` : ''}
+      <div class="report-bottom">
+        <div class="pbar-wrap">
+          <div class="pval" style="color:${prioColor(p)}">PRIORITY ${p}</div>
+          <div class="pbar"><div class="pfill" style="width:${p}%;background:${prioColor(p)}"></div></div>
+        </div>
+        <select class="status-sel" onchange="updateStatus('${r.id}',this.value)" onclick="event.stopPropagation()">
+          <option ${r.status==='Pending' ?'selected':''} value="Pending">PENDING</option>
+          <option ${r.status==='Ongoing' ?'selected':''} value="Ongoing">ONGOING</option>
+          <option ${r.status==='Resolved'?'selected':''} value="Resolved">RESOLVED</option>
+        </select>
+        ${r.dispatched_to
+          ? `<span class="dispatched-badge">📱 ${r.dispatched_to}</span>`
+          : `<button class="dispatch-btn" onclick="event.stopPropagation();openDispatch('${r.id}')">📡 DISPATCH</button>`
+        }
+        <button class="del-btn" onclick="event.stopPropagation();deleteReport('${r.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function updateStatus(id, status) {
+  await fetch(`/reports/${id}/status`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({status})
+  });
+  await loadReports();
+}
+
+async function deleteReport(id) {
+  if (markers[id]) { markers[id].remove(); delete markers[id]; }
+  await fetch(`/reports/${id}`, {method:'DELETE'});
+  await loadReports();
+}
+
+async function loadReports() {
+  try {
+    const res = await fetch('/reports');
+    allReports = await res.json();
+    render();
+    document.getElementById('refresh-info').textContent =
+      `updated ${new Date().toLocaleTimeString()} · auto 5s`;
+  } catch(e) {}
+}
+
+loadReports();
+loadSummary();
+setInterval(loadReports, 5000);
+setInterval(loadSummary, 30000);
+
+// ── Responders ────────────────────────────────────────────────────────────────
+let responders = [];
+let dispatchReportId = null;
+let selectedResponderId = null;
+
+async function loadResponders() {
+  const res = await fetch('/responders');
+  responders = await res.json();
+}
+
+async function openRespondersModal() {
+  await loadResponders();
+  const list = document.getElementById('responders-list-manage');
+  if (!responders.length) {
+    list.innerHTML = '<div style="color:#8b949e;font-size:11px;padding:10px">No responders yet.</div>';
+  } else {
+    list.innerHTML = responders.map(r => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#0d1117;border:1px solid #30363d;border-radius:4px;margin-bottom:6px">
+        <div>
+          <div style="font-size:12px;font-weight:bold;color:#e6edf3">${r.name}</div>
+          <div style="font-size:10px;color:#8b949e">${r.role} · ${r.phone}</div>
+        </div>
+        <button onclick="removeResponder(${r.id})"
+          style="background:transparent;border:1px solid #f8514930;color:#f85149;font-family:monospace;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer">
+          REMOVE
+        </button>
+      </div>`).join('');
+  }
+  document.getElementById('responders-modal').classList.add('show');
+}
+
+async function addResponder() {
+  const name  = document.getElementById('new-name').value.trim();
+  const role  = document.getElementById('new-role').value.trim();
+  const phone = document.getElementById('new-phone').value.trim();
+  if (!name || !role || !phone) { alert('All fields required.'); return; }
+  await fetch('/responders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, role, phone })
+  });
+  document.getElementById('new-name').value  = '';
+  document.getElementById('new-role').value  = '';
+  document.getElementById('new-phone').value = '';
+  await openRespondersModal();
+}
+
+async function removeResponder(id) {
+  await fetch(`/responders/${id}`, { method: 'DELETE' });
+  await openRespondersModal();
+}
+
+// ── Dispatch ──────────────────────────────────────────────────────────────────
+async function openDispatch(reportId) {
+  await loadResponders();
+  dispatchReportId   = reportId;
+  selectedResponderId = null;
+
+  const report = allReports.find(r => r.id === reportId);
+  document.getElementById('dispatch-report-info').innerHTML =
+    `<b>RPT-${report.id}</b> — ${report.category} | ${report.severity} severity<br>
+     <span style="color:#8b949e;font-size:10px">${report.description.substring(0,80)}...</span>`;
+
+  const list = document.getElementById('responder-list-modal');
+  if (!responders.length) {
+    list.innerHTML = `<div style="color:#f85149;font-size:11px;padding:10px">
+      No responders found. <a href="#" onclick="document.getElementById('dispatch-modal').classList.remove('show');openRespondersModal()" style="color:#58a6ff">Add responders first →</a>
+    </div>`;
+  } else {
+    list.innerHTML = responders.map(r => `
+      <div class="responder-card" id="rcard-${r.id}" onclick="selectResponder(${r.id}, '${r.name}', '${r.role}', '${r.phone}')">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;font-weight:bold;color:#e6edf3">${r.name}</div>
+            <div style="font-size:10px;color:#8b949e">${r.role} · 📱 ${r.phone}</div>
+          </div>
+          <div style="font-size:11px;color:#3d5070">SELECT</div>
+        </div>
+      </div>`).join('');
+  }
+
+  document.getElementById('sms-preview').style.display = 'none';
+  document.getElementById('dispatch-modal').classList.add('show');
+}
+
+function selectResponder(id, name, role, phone) {
+  selectedResponderId = id;
+  document.querySelectorAll('.responder-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`rcard-${id}`).classList.add('selected');
+
+  // Show SMS preview
+  const report = allReports.find(r => r.id === dispatchReportId);
+  const loc    = report.location_text || (report.lat ? `GPS: ${report.lat?.toFixed(5)},${report.lng?.toFixed(5)}` : 'unknown');
+  const preview = document.getElementById('sms-preview');
+  preview.style.display = 'block';
+  preview.textContent =
+    `📱 SMS PREVIEW → ${phone}\n\n` +
+    `[TRIAGE-DELROSARIO] DISPATCH ALERT\n` +
+    `RPT-${report.id} | ${report.category.toUpperCase()} | ${report.severity.toUpperCase()}\n` +
+    `Location: ${loc}\n` +
+    `Report: ${report.description.substring(0,100)}\n` +
+    `Respond immediately. -BDRRMC Del Rosario`;
+}
+
+function closeDispatch() {
+  document.getElementById('dispatch-modal').classList.remove('show');
+  dispatchReportId = null;
+  selectedResponderId = null;
+}
+
+async function confirmDispatch() {
+  if (!selectedResponderId) { alert('Select a responder first.'); return; }
+  const btn = document.getElementById('dispatch-confirm-btn');
+  btn.textContent = '⏳ Sending SMS...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`/reports/${dispatchReportId}/dispatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responder_id: selectedResponderId })
+    });
+    const d = await res.json();
+    closeDispatch();
+    await loadReports();
+
+    // Open the realistic SMS simulation in a new tab
+    if (d.sms_view_url) {
+      window.open(d.sms_view_url, '_blank');
+    }
+    alert(`📱 SMS DISPATCHED\n\nResponder: ${d.dispatched_to} (${d.role})\nPhone: ${d.phone}\n\nSMS simulation opened in new tab.\nReport is now ONGOING.`);
+  } catch(e) {
+    alert('Dispatch failed. Check server.');
+  } finally {
+    btn.textContent = '📱 DISPATCH + SEND SMS';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "categories": [
+    "Flooding",
+    "Fire",
+    "Medical Emergency",
+    "Infrastructure Damage"
+  ],
+  "severities": [
+    "High",
+    "Medium",
+    "Low"
+  ],
+  "credibility": [
+    "credible",
+    "suspicious"
+  ]
+}
