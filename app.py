@@ -22,7 +22,8 @@ from flask import Flask, request, jsonify, render_template
 app = Flask(__name__)
 
 # ── Gemini API Key ─────────────────────────────────────────────────────────────
-GEMINI_API_KEY = 'AIzaSyDE7FDIkHb-9HT4fAIUu-YzrxWuMnIx_JQ'
+# Set it before running:  set GEMINI_API_KEY=your_key_here  (Windows)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}'
 
 # ── SQLite Database ────────────────────────────────────────────────────────────
